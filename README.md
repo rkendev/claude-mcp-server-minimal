@@ -1,5 +1,8 @@
 # claude-mcp-server-minimal
 
+[![CI](https://github.com/rkendev/claude-mcp-server-minimal/actions/workflows/ci.yml/badge.svg)](https://github.com/rkendev/claude-mcp-server-minimal/actions/workflows/ci.yml)
+
+
 Hexagonal / DDD-lite Python 3.12 project with a three-tier LLM adapter
 (Claude Haiku → gpt-4o-mini → Ollama), a parametrized `LLMPort` contract
 suite, Docker compose for Ollama, a pinned pre-commit chain, and a CI

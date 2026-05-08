@@ -101,6 +101,46 @@ LLM_TIER=tertiary uv run python -m claude_mcp_server_minimal.main \
 
 No API key required; runs entirely against local Ollama.
 
+## MCP Server
+
+`.mcp.json` at the repo root declares this project as an MCP server an
+MCP-aware client (Claude Desktop, Claude Code, Cursor, …) can launch
+over stdio:
+
+```json
+{
+  "mcpServers": {
+    "claude-mcp-server-minimal": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "claude_mcp_server_minimal.server"],
+      "env": { "MCP_API_KEY": "${MCP_API_KEY}" }
+    }
+  }
+}
+```
+
+`${MCP_API_KEY}` is shell-style env-var expansion: the client substitutes
+the value from its environment at launch time, so the secret never lives
+in the JSON.
+
+The server exposes one tool today, `describe_schema`, which returns its
+schema version (`v1`) and the metadata of every advertised tool. The
+input schema is strict: `additionalProperties: false` and `required: []`,
+so a strict client refuses calls with extra keys without a round-trip.
+
+Run the server directly (mostly useful for debugging — production clients
+spawn it themselves):
+
+```bash
+uv run python -m claude_mcp_server_minimal.server
+```
+
+Verify the published config from anywhere:
+
+```bash
+curl https://raw.githubusercontent.com/rkendev/claude-mcp-server-minimal/main/.mcp.json | jq
+```
+
 ## Configuration
 
 All runtime configuration lives in `.env` (loaded by

@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "claude-mcp-server-minimal": {
+      "command": "uv",
+      "args": [
+        "run",
+        "python",
+        "-m",
+        "claude_mcp_server_minimal.server"
+      ],
+      "env": {
+        "MCP_API_KEY": "${MCP_API_KEY}"
+      }
+    }
+  }
+}

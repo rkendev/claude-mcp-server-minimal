@@ -17,9 +17,9 @@ readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
 authors = [
-    { name = "Your Name", email = "you@example.com" },
+    { name = "Roy Kensmil", email = "rkensmil2@gmail.com" },
 ]
-keywords = ["llm", "hexagonal", "ddd", "anthropic", "openai", "ollama"]
+keywords = ["mcp", "model-context-protocol", "claude", "anthropic", "cca-f"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",

@@ -2,10 +2,17 @@
 
 Exposes one tool, ``describe_schema``, which returns this server's
 self-description: its schema version and the metadata of every tool it
-advertises. The tool takes no arguments; its ``input_schema`` carries
-the strict-mode signal (``additionalProperties: False`` and
-``required: []``) so a strict MCP client can refuse calls with extra
-keys without first round-tripping a validation error.
+advertises. The tool reflects on the registered MCP tools at call time
+(via ``mcp.list_tools()``) rather than returning hardcoded metadata, so
+adding a tool with ``@mcp.tool()`` automatically surfaces it here. The
+exact wire shape is pinned by ``test_describe_schema_returns_exact_v1_shape``
+so an SDK upgrade that quietly reshapes the dict breaks tests instead of
+silently changing the published schema.
+
+The tool takes no arguments; its ``input_schema`` carries the strict-mode
+signal (``additionalProperties: False`` and ``required: []``) so a strict
+MCP client can refuse calls with extra keys without first round-tripping
+a validation error.
 """
 
 from __future__ import annotations
@@ -43,6 +50,11 @@ async def describe_schema() -> dict[str, Any]:
 # inject them so `tools/list` shows the strictness explicitly. The dict
 # on `Tool.parameters` is returned verbatim as `inputSchema`
 # (fastmcp/server.py L323).
+# TODO(mcp>=2): switch to a public Tool.parameters API if/when one is
+# added. Tracking https://github.com/modelcontextprotocol/python-sdk
+# for an official entry point. Until then, the explicit injection
+# below is the only way to get additionalProperties:false to surface
+# in tools/list output.
 _describe_schema_tool = mcp._tool_manager._tools["describe_schema"]
 _describe_schema_tool.parameters["additionalProperties"] = False
 _describe_schema_tool.parameters["required"] = []

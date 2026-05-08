@@ -2,12 +2,13 @@
 
 [![CI](https://github.com/rkendev/claude-mcp-server-minimal/actions/workflows/ci.yml/badge.svg)](https://github.com/rkendev/claude-mcp-server-minimal/actions/workflows/ci.yml)
 
+Minimal MCP server demonstrating Claude D2 fundamentals —
+`.mcp.json` env-var expansion, structured error handling, strict tool
+input schemas. Built as Artifact A of a Claude Certified Architect
+Foundations small-projects portfolio.
 
-Hexagonal / DDD-lite Python 3.12 project with a three-tier LLM adapter
-(Claude Haiku → gpt-4o-mini → Ollama), a parametrized `LLMPort` contract
-suite, Docker compose for Ollama, a pinned pre-commit chain, and a CI
-workflow — scaffolded from
-[`claude-mcp-server-minimal`](https://github.com/rkendev/claude-mcp-server-minimal).
+> Repo bootstrapped from my own `roy-ai-template@v0.5.0` starter;
+> MCP server logic is original.
 
 ## Quick start
 
@@ -24,82 +25,13 @@ uv sync --all-extras
 # (auto-fix hooks aren't part of `make check`).
 uv run pre-commit install
 
-# Run the full quality gate: lint + type + security + 219 tests + auto-fix hooks.
+# Run the full quality gate: lint + type + security + unit + contract tests.
 make check
 ```
 
-Need offline Ollama backing? `./scripts/smoke.sh` brings up a
-digest-pinned Ollama container and verifies it's healthy.
-
-## What this gives you
-
-A shaped starting point, not a framework. Three layers with a strict
-dependency rule (see [`ARCHITECTURE.md`](ARCHITECTURE.md)):
-
-- **`domain/`** — types, invariants, errors. Pure Python; Pydantic is
-  the only third-party import allowed.
-- **`application/`** — ports (`LLMPort`, `ConfigPort`, `LoggerPort`)
-  and the `FallbackModel` orchestrator. Depends on `domain/` only.
-- **`infrastructure/`** — SDK adapters (Anthropic, OpenAI, Ollama) and
-  the `pydantic-settings` loader. Only layer that imports vendor SDKs
-  or reads the environment.
-- **`main.py`** — the single composition root. `build_llm(settings)`
-  wires a single adapter or a `FallbackModel` stack depending on
-  `LLM_TIER`.
-
-The 32-case contract suite in `tests/contract/` is the architectural
-drift detector: any new adapter registered with
-`tests/contract/conftest.py::LLM_ADAPTERS` inherits eight behavioural
-assertions automatically — vendor-tagged failures
-(`test_returns_response[anthropic]`) pinpoint which implementation
-drifted, not which test broke.
-
-## Make targets
-
-Run `make help` for the full list. The core surface:
-
-| Target | What it does |
-| --- | --- |
-| `check` | ruff + ruff-format + mypy + bandit + 219 unit/contract tests. The default quality gate. |
-| `fmt` | Auto-fix formatting with ruff. |
-| `lint` | ruff lint only (no format pass). |
-| `typecheck` | mypy strict on `src/` + `tests/`. |
-| `security` | bandit -ll on `src/`. |
-| `test` | pytest unit + contract, with coverage. |
-| `integration` | pytest -m integration (requires docker-compose; skips if empty). |
-| `smoke` | `./scripts/smoke.sh` — docker compose up + healthcheck for Ollama. |
-| `build` | `uv build` — sdist + wheel. |
-| `parity` | `scripts/check_version_parity.py` — asserts ruff/mypy/bandit pins match between `pyproject.toml` and `.pre-commit-config.yaml`. |
-| `example-all-tiers` | Run all three examples back-to-back (needs API keys for cloud tiers). |
-
-## Example usage
-
-Three runnable scripts in `examples/` show the composition root from the
-outside:
-
-```bash
-# Single adapter (Claude Haiku) — needs ANTHROPIC_API_KEY.
-uv run python examples/01_single_adapter.py
-
-# Fallback stack — uses whichever tier's credentials are present.
-uv run python examples/02_fallback_demo.py
-
-# Custom stack — secondary (OpenAI) only; demonstrates how to wire a
-# subset of tiers manually.
-uv run python examples/03_custom_stack.py
-```
-
-Each script prints the completion on stdout and a `[tier=... model=... ]`
-metadata line on stderr so pipelines can consume `.text` cleanly.
-
-Offline-only? Force the tertiary tier:
-
-```bash
-LLM_TIER=tertiary uv run python -m claude_mcp_server_minimal.main \
-  "Say hi in one sentence."
-```
-
-No API key required; runs entirely against local Ollama.
+Need offline Ollama backing for the inherited template scaffolding?
+`./scripts/smoke.sh` brings up a digest-pinned Ollama container and
+verifies it's healthy.
 
 ## MCP Server
 
@@ -140,6 +72,81 @@ Verify the published config from anywhere:
 ```bash
 curl https://raw.githubusercontent.com/rkendev/claude-mcp-server-minimal/main/.mcp.json | jq
 ```
+
+## Inherited template scaffolding (background)
+
+The repository was scaffolded from `roy-ai-template@v0.5.0`, which ships
+a three-tier LLM adapter, a parametrized contract suite, and a Docker
+healthcheck for offline Ollama. That code still lives in `src/` while
+Artifact A is being built; whether to strip or integrate it is a Wk3
+decision, not an Artifact A concern.
+
+A shaped starting point, not a framework. Three layers with a strict
+dependency rule (see [`ARCHITECTURE.md`](ARCHITECTURE.md)):
+
+- **`domain/`** — types, invariants, errors. Pure Python; Pydantic is
+  the only third-party import allowed.
+- **`application/`** — ports (`LLMPort`, `ConfigPort`, `LoggerPort`)
+  and the `FallbackModel` orchestrator. Depends on `domain/` only.
+- **`infrastructure/`** — SDK adapters (Anthropic, OpenAI, Ollama) and
+  the `pydantic-settings` loader. Only layer that imports vendor SDKs
+  or reads the environment.
+- **`main.py`** — the single composition root. `build_llm(settings)`
+  wires a single adapter or a `FallbackModel` stack depending on
+  `LLM_TIER`.
+
+The 32-case contract suite in `tests/contract/` is the architectural
+drift detector: any new adapter registered with
+`tests/contract/conftest.py::LLM_ADAPTERS` inherits eight behavioural
+assertions automatically — vendor-tagged failures
+(`test_returns_response[anthropic]`) pinpoint which implementation
+drifted, not which test broke.
+
+### Example usage (template-era)
+
+Three runnable scripts in `examples/` show the composition root from the
+outside:
+
+```bash
+# Single adapter (Claude Haiku) — needs ANTHROPIC_API_KEY.
+uv run python examples/01_single_adapter.py
+
+# Fallback stack — uses whichever tier's credentials are present.
+uv run python examples/02_fallback_demo.py
+
+# Custom stack — secondary (OpenAI) only; demonstrates how to wire a
+# subset of tiers manually.
+uv run python examples/03_custom_stack.py
+```
+
+Each script prints the completion on stdout and a `[tier=... model=... ]`
+metadata line on stderr so pipelines can consume `.text` cleanly.
+
+Offline-only? Force the tertiary tier:
+
+```bash
+LLM_TIER=tertiary uv run python -m claude_mcp_server_minimal.main \
+  "Say hi in one sentence."
+```
+
+No API key required; runs entirely against local Ollama.
+
+## Make targets
+
+Run `make help` for the full list. The core surface:
+
+| Target | What it does |
+| --- | --- |
+| `check` | ruff + ruff-format + mypy + bandit + unit + contract tests. The default quality gate. |
+| `fmt` | Auto-fix formatting with ruff. |
+| `lint` | ruff lint only (no format pass). |
+| `typecheck` | mypy strict on `src/` + `tests/`. |
+| `security` | bandit -ll on `src/`. |
+| `test` | pytest unit + contract, with coverage. |
+| `integration` | pytest -m integration (requires docker-compose; skips if empty). |
+| `smoke` | `./scripts/smoke.sh` — docker compose up + healthcheck for Ollama. |
+| `build` | `uv build` — sdist + wheel. |
+| `parity` | `scripts/check_version_parity.py` — asserts ruff/mypy/bandit pins match between `pyproject.toml` and `.pre-commit-config.yaml`. |
 
 ## Configuration
 

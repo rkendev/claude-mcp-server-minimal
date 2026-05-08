@@ -65,3 +65,4 @@ docker-compose.override.yml
 tmp/
 scratch/
 *.log
+tasks/

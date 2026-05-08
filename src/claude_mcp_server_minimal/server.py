@@ -21,7 +21,7 @@ SERVER_NAME = "claude-mcp-server-minimal"
 mcp = FastMCP(SERVER_NAME)
 
 
-@mcp.tool()
+@mcp.tool()  # type: ignore[misc, unused-ignore]  # mcp SDK has no py.typed marker (1.27.0); revisit when SDK ships types
 async def describe_schema() -> dict[str, Any]:
     """Return this server's schema version and the tools it advertises."""
     tools = await mcp.list_tools()

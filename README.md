@@ -55,10 +55,29 @@ over stdio:
 the value from its environment at launch time, so the secret never lives
 in the JSON.
 
-The server exposes one tool today, `describe_schema`, which returns its
-schema version (`v1`) and the metadata of every advertised tool. The
-input schema is strict: `additionalProperties: false` and `required: []`,
-so a strict client refuses calls with extra keys without a round-trip.
+The server exposes two tools.
+
+- **`describe_schema`** returns the schema version (`v1`), server name,
+  and metadata of every advertised tool. Its input schema is strict:
+  `additionalProperties: false` and `required: []`, so a strict client
+  refuses calls with extra keys without a round-trip.
+- **`echo_toolcall`** echoes its `input` back. `input` is published as
+  an `anyOf` of either a bare string or a structured `EchoInput` object
+  (`message: str`, optional `metadata: dict`) — a real-world MCP shape
+  for a tool that accepts either a primitive or a structured payload.
+  The tool validates `MCP_API_KEY` at call time; missing or empty
+  surfaces a `permission` error envelope (the tool itself doesn't talk
+  to any real API yet — that's Wk3+).
+
+Every tool result is wrapped in a canonical envelope:
+`{"success": True, "data": ...}` on success and
+`{"success": False, "error": {"errorCategory": ..., "isRetryable": ..., "message": ...}}`
+on failure. `errorCategory` is one of `transient` / `validation` /
+`permission` / `business`; `isRetryable` is critical because retrying a
+`validation` or `permission` failure burns budget on a request the
+server will reject again. The MCP-protocol-level `isError` flag is
+deliberately unused for tool-domain failures — it's reserved for true
+transport / unhandled-exception faults.
 
 Run the server directly (mostly useful for debugging — production clients
 spawn it themselves):

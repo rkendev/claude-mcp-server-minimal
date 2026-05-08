@@ -1,9 +1,9 @@
-"""Tests for the MCP server entry point (T001 — `describe_schema`).
+"""Tests for the MCP server entry point (T001 ``describe_schema`` + T002 ``echo_toolcall``).
 
-These exercise the registered tool via the FastMCP instance directly
-(no transport, no subprocess). The async helpers (`list_tools`,
-`call_tool`) are the same surface a real MCP client would see over
-stdio, so observing them here is sufficient evidence that the tool's
+These exercise the registered tools via the FastMCP instance directly
+(no transport, no subprocess). The async helpers (``list_tools``,
+``call_tool``) are the same surface a real MCP client would see over
+stdio, so observing them here is sufficient evidence that each tool's
 schema and return shape match the contract.
 """
 
@@ -11,40 +11,53 @@ from __future__ import annotations
 
 import asyncio
 import json
+from datetime import datetime
 from typing import Any, cast
 
+import pytest
 from mcp.types import Tool as MCPTool
 
-from claude_mcp_server_minimal.server import SCHEMA_VERSION, mcp
+from claude_mcp_server_minimal.server import SCHEMA_VERSION, EchoInput, mcp
 
 
 def _list_tools() -> list[MCPTool]:
     return asyncio.run(mcp.list_tools())
 
 
-def _call_describe_schema() -> dict[str, Any]:
+def _call_tool(name: str, args: dict[str, Any]) -> dict[str, Any]:
     # FastMCP's call_tool returns (content_blocks, structured_output) at
     # runtime; the type stub on the public method is broader, so we narrow
     # locally. The structured-output branch is the dict we returned; we
     # also assert the JSON in the TextContent block agrees with it, so an
     # SDK change that diverges them surfaces here.
-    raw = asyncio.run(mcp.call_tool("describe_schema", {}))
+    raw = asyncio.run(mcp.call_tool(name, args))
     blocks, structured = cast(tuple[list[Any], dict[str, Any]], raw)
     text_payload: dict[str, Any] = json.loads(blocks[0].text)
     assert text_payload == structured
     return structured
 
 
+def _call_describe_schema() -> dict[str, Any]:
+    return _call_tool("describe_schema", {})
+
+
+# ---------------------------------------------------------------------------
+# describe_schema (T001) — updated to assert the new envelope shape.
+# ---------------------------------------------------------------------------
+
+
 def test_describe_schema_returns_schema_version_v1() -> None:
     payload = _call_describe_schema()
-    assert payload["schema_version"] == "v1"
+    assert payload["success"] is True
+    assert payload["data"]["schema_version"] == "v1"
     assert SCHEMA_VERSION == "v1"
 
 
 def test_describe_schema_advertises_itself() -> None:
     payload = _call_describe_schema()
-    names = [t["name"] for t in payload["tools"]]
+    names = [t["name"] for t in payload["data"]["tools"]]
     assert "describe_schema" in names
+    assert "echo_toolcall" in names
 
 
 def test_describe_schema_input_schema_is_strict() -> None:
@@ -58,23 +71,128 @@ def test_describe_schema_returns_exact_v1_shape() -> None:
     # `mcp.list_tools()` at call time, so an SDK change that reshapes
     # the dict (renames keys, reorders fields, drops a property) breaks
     # this test instead of silently changing the published schema.
-    # When T002 lands `echo_toolcall`, this expected literal must grow
-    # by one entry in `tools` — that's the point.
+    # T002 wrapped the payload in the canonical success envelope and
+    # added the `echo_toolcall` entry; the dict branch of `echo_toolcall`'s
+    # `anyOf` is sourced from `EchoInput.model_json_schema()` so trivial
+    # Pydantic-side reorderings stay green.
     expected = {
-        "schema_version": "v1",
-        "server": "claude-mcp-server-minimal",
-        "tools": [
-            {
-                "name": "describe_schema",
-                "description": "Return this server's schema version and the tools it advertises.",
-                "input_schema": {
-                    "properties": {},
-                    "title": "describe_schemaArguments",
-                    "type": "object",
-                    "additionalProperties": False,
-                    "required": [],
+        "success": True,
+        "data": {
+            "schema_version": "v1",
+            "server": "claude-mcp-server-minimal",
+            "tools": [
+                {
+                    "name": "describe_schema",
+                    "description": (
+                        "Return this server's schema version and the tools it advertises."
+                    ),
+                    "input_schema": {
+                        "properties": {},
+                        "title": "describe_schemaArguments",
+                        "type": "object",
+                        "additionalProperties": False,
+                        "required": [],
+                    },
                 },
-            }
-        ],
+                {
+                    "name": "echo_toolcall",
+                    "description": (
+                        "Echo ``input`` back, wrapped in the canonical success envelope."
+                    ),
+                    "input_schema": {
+                        "properties": {
+                            "input": {
+                                "anyOf": [
+                                    {"type": "string"},
+                                    EchoInput.model_json_schema(),
+                                ],
+                                "title": "Input",
+                            }
+                        },
+                        "required": ["input"],
+                        "title": "echo_toolcallArguments",
+                        "type": "object",
+                    },
+                },
+            ],
+        },
     }
     assert _call_describe_schema() == expected
+
+
+# ---------------------------------------------------------------------------
+# echo_toolcall (T002).
+# ---------------------------------------------------------------------------
+
+
+def test_echo_toolcall_string_input_returns_success_envelope(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MCP_API_KEY", "present")
+    payload = _call_tool("echo_toolcall", {"input": "hello"})
+    assert payload["success"] is True
+    data = payload["data"]
+    assert data["echoed"] == "hello"
+    assert isinstance(data["received_at"], str) and data["received_at"]
+    # Parseable as ISO-8601 (the implementation uses datetime.isoformat()).
+    datetime.fromisoformat(data["received_at"])
+
+
+def test_echo_toolcall_object_input_with_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MCP_API_KEY", "present")
+    payload = _call_tool(
+        "echo_toolcall",
+        {"input": {"message": "hi", "metadata": {"trace_id": "abc"}}},
+    )
+    assert payload["success"] is True
+    data = payload["data"]
+    assert data["echoed"] == "hi"
+    assert data["metadata"] == {"trace_id": "abc"}
+    datetime.fromisoformat(data["received_at"])
+
+
+def test_echo_toolcall_object_input_missing_message_returns_validation_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MCP_API_KEY", "present")
+    payload = _call_tool("echo_toolcall", {"input": {"foo": "bar"}})
+    assert payload["success"] is False
+    err = payload["error"]
+    assert err["errorCategory"] == "validation"
+    assert err["isRetryable"] is False
+    assert err["message"]
+    assert err["details"] is not None
+    assert "errors" in err["details"]
+
+
+def test_echo_toolcall_empty_api_key_returns_permission_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("MCP_API_KEY", "")
+    payload = _call_tool("echo_toolcall", {"input": "hello"})
+    assert payload["success"] is False
+    err = payload["error"]
+    assert err["errorCategory"] == "permission"
+    assert err["isRetryable"] is False
+    assert "MCP_API_KEY" in err["message"]
+
+
+def test_echo_toolcall_input_schema_has_anyOf() -> None:
+    # This is the explicit code-level assertion the T002 prompt requires:
+    # FastMCP must publish an `anyOf` for the `input` parameter, and the
+    # object branch must reflect EchoInput's strict contract
+    # (additionalProperties:false + required:["message"]). A schema-
+    # generation regression — in either FastMCP or our private-API
+    # override — surfaces here, not in production.
+    tool = next(t for t in _list_tools() if t.name == "echo_toolcall")
+    input_prop = tool.inputSchema["properties"]["input"]
+    assert "anyOf" in input_prop, "echo_toolcall must publish an anyOf for `input`"
+    branches = input_prop["anyOf"]
+    assert len(branches) == 2
+    types = {b.get("type") for b in branches}
+    assert "string" in types
+    object_branch = next(b for b in branches if b.get("type") == "object")
+    assert object_branch["additionalProperties"] is False
+    assert object_branch["required"] == ["message"]

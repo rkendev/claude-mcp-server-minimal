@@ -51,3 +51,30 @@ def test_describe_schema_input_schema_is_strict() -> None:
     tool = next(t for t in _list_tools() if t.name == "describe_schema")
     assert tool.inputSchema["additionalProperties"] is False
     assert tool.inputSchema["required"] == []
+
+
+def test_describe_schema_returns_exact_v1_shape() -> None:
+    # Pin the entire wire shape. The implementation introspects
+    # `mcp.list_tools()` at call time, so an SDK change that reshapes
+    # the dict (renames keys, reorders fields, drops a property) breaks
+    # this test instead of silently changing the published schema.
+    # When T002 lands `echo_toolcall`, this expected literal must grow
+    # by one entry in `tools` — that's the point.
+    expected = {
+        "schema_version": "v1",
+        "server": "claude-mcp-server-minimal",
+        "tools": [
+            {
+                "name": "describe_schema",
+                "description": "Return this server's schema version and the tools it advertises.",
+                "input_schema": {
+                    "properties": {},
+                    "title": "describe_schemaArguments",
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": [],
+                },
+            }
+        ],
+    }
+    assert _call_describe_schema() == expected

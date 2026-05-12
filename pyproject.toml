@@ -12,14 +12,14 @@ build-backend = "hatchling.build"
 [project]
 name = "claude-mcp-server-minimal"
 version = "0.1.0"
-description = "Minimal MCP server for CCA-F D2 fundamentals."
+description = "Minimal MCP server demonstrating Claude tool-use and MCP fundamentals."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
 authors = [
     { name = "Roy Kensmil", email = "rkensmil2@gmail.com" },
 ]
-keywords = ["mcp", "model-context-protocol", "claude", "anthropic", "cca-f"]
+keywords = ["mcp", "model-context-protocol", "claude", "anthropic", "tool-use"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",

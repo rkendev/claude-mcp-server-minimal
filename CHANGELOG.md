@@ -13,10 +13,10 @@ release; each tagged version carries its release date and a stable anchor.
 
 ## [0.1.0] — 2026-05-08
 
-First release of Artifact A (Minimal MCP Server) for the Claude Certified
-Architect Foundations small-projects portfolio. Demonstrates D2
+First release of Artifact A (Minimal MCP Server) for a small-projects
+portfolio exploring Claude's tool-use and MCP fundamentals. Demonstrates D2
 fundamentals: `.mcp.json` env-var expansion, strict tool input schemas,
-and the canonical CCA-F D2 error envelope.
+and the canonical flat error envelope (`errorCategory` / `isRetryable` / `message`).
 
 ### Added
 
@@ -25,7 +25,7 @@ and the canonical CCA-F D2 error envelope.
   Audit findings from T001b addressed: 3 major + 3 minor.
 - **`echo_toolcall` MCP tool** (T002) — accepts an `anyOf` parameter shape
   (string OR `EchoInput` object); validates `MCP_API_KEY` at call time and
-  raises the canonical CCA-F D2 error envelope (`errorCategory` /
+  raises the canonical flat error envelope (`errorCategory` /
   `isRetryable` / `message`) on auth failure.
 - **`.mcp.json`** with `${MCP_API_KEY}` env-var expansion — the standard
   Claude Code wiring for connecting an MCP server.

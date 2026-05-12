@@ -4,8 +4,8 @@
 
 Minimal MCP server demonstrating Claude D2 fundamentals —
 `.mcp.json` env-var expansion, structured error handling, strict tool
-input schemas. Built as Artifact A of a Claude Certified Architect
-Foundations small-projects portfolio.
+input schemas. Built as Artifact A of a small-projects portfolio
+exploring Claude's tool-use and MCP fundamentals.
 
 > Repo bootstrapped from my own `roy-ai-template@v0.5.0` starter;
 > MCP server logic is original.

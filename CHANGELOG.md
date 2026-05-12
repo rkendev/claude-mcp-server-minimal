@@ -14,7 +14,7 @@ release; each tagged version carries its release date and a stable anchor.
 ## [0.1.0] — 2026-05-08
 
 First release of Artifact A (Minimal MCP Server) for a small-projects
-portfolio exploring Claude's tool-use and MCP fundamentals. Demonstrates D2
+portfolio exploring Claude's tool-use and MCP fundamentals. Demonstrates these
 fundamentals: `.mcp.json` env-var expansion, strict tool input schemas,
 and the canonical flat error envelope (`errorCategory` / `isRetryable` / `message`).
 

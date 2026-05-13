@@ -64,11 +64,12 @@ async def _main() -> None:
         )
         sys.exit(1)
 
-    cache_hit_ratio = cr2 / (cr2 + usage2["input_tokens"]) if (cr2 + usage2["input_tokens"]) else 0
+    input_total2 = cr2 + usage2["input_tokens"]
+    cache_hit_ratio = cr2 / input_total2 if input_total2 else 0
     latency_delta = (ms1 - ms2) / ms1 if ms1 else 0
     # cache-read tokens are billed at 10% of normal input rate -> 90% discount
     # on the cached fraction of call 2's input.
-    cost_reduction = (cr2 * 0.9) / (cr2 + usage2["input_tokens"]) if (cr2 + usage2["input_tokens"]) else 0
+    cost_reduction = (cr2 * 0.9) / input_total2 if input_total2 else 0
 
     print("| Call      | input_tokens | cache_creation | cache_read | output_tokens | latency_ms |")
     print("|-----------|-------------:|---------------:|-----------:|--------------:|-----------:|")
@@ -83,7 +84,10 @@ async def _main() -> None:
     print()
     print(f"Cache-hit ratio (call 2): {cache_hit_ratio:.1%}")
     print(f"Latency delta: {latency_delta:.0%} faster")
-    print(f"Token-cost reduction (call 2 input): {cost_reduction:.0%} (cache_read priced at 10% of input)")
+    print(
+        f"Token-cost reduction (call 2 input): {cost_reduction:.0%} "
+        "(cache_read priced at 10% of input)"
+    )
 
 
 if __name__ == "__main__":

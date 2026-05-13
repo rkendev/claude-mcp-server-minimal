@@ -145,6 +145,23 @@ _echo_toolcall_tool.parameters["properties"]["input"]["anyOf"][1] = (  # type: i
 )
 
 
+class SubagentQueryInput(BaseModel):
+    """Strict input schema for ``subagent_query`` (used by T004 dispatch)."""
+
+    question: str
+
+    model_config = {"extra": "forbid"}
+
+
+# Stub — Wk1 kickoff (T003). Dispatch logic lands in T004; this returns the
+# canonical success envelope with an empty trajectory so the tool surface
+# registers and is callable, but no second Claude call is made yet.
+@mcp.tool()  # type: ignore[misc, unused-ignore]  # mcp SDK has no py.typed marker (1.27.0); revisit when SDK ships types
+async def subagent_query(question: str) -> dict[str, Any]:
+    """STUB (T003): return an empty trajectory; real dispatch lands in T004."""
+    return success_envelope({"question": question, "trajectory": []})
+
+
 def main() -> None:
     """Stdio entry point. ``MCP_API_KEY`` is validated per-tool, not here."""
     mcp.run(transport="stdio")
@@ -158,6 +175,7 @@ __all__ = [
     "SCHEMA_VERSION",
     "SERVER_NAME",
     "EchoInput",
+    "SubagentQueryInput",
     "main",
     "mcp",
 ]

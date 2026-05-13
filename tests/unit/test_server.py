@@ -58,6 +58,7 @@ def test_describe_schema_advertises_itself() -> None:
     names = [t["name"] for t in payload["data"]["tools"]]
     assert "describe_schema" in names
     assert "echo_toolcall" in names
+    assert "subagent_query" in names
 
 
 def test_describe_schema_input_schema_is_strict() -> None:
@@ -111,6 +112,20 @@ def test_describe_schema_returns_exact_v1_shape() -> None:
                         },
                         "required": ["input"],
                         "title": "echo_toolcallArguments",
+                        "type": "object",
+                    },
+                },
+                {
+                    "name": "subagent_query",
+                    "description": (
+                        "STUB (T003): return an empty trajectory; real dispatch lands in T004."
+                    ),
+                    "input_schema": {
+                        "properties": {
+                            "question": {"title": "Question", "type": "string"},
+                        },
+                        "required": ["question"],
+                        "title": "subagent_queryArguments",
                         "type": "object",
                     },
                 },
@@ -196,3 +211,17 @@ def test_echo_toolcall_input_schema_has_anyOf() -> None:
     object_branch = next(b for b in branches if b.get("type") == "object")
     assert object_branch["additionalProperties"] is False
     assert object_branch["required"] == ["message"]
+
+
+# ---------------------------------------------------------------------------
+# subagent_query (T003) — stub: empty trajectory, dispatch lands in T004.
+# ---------------------------------------------------------------------------
+
+
+def test_subagent_query_stub_returns_empty_trajectory() -> None:
+    """T003: stub returns the canonical envelope with an empty trajectory."""
+    payload = _call_tool("subagent_query", {"question": "ping"})
+    assert payload == {
+        "success": True,
+        "data": {"question": "ping", "trajectory": []},
+    }

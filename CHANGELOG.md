@@ -11,6 +11,8 @@ release; each tagged version carries its release date and a stable anchor.
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-05-13
+
 ### Added
 
 - **Prompt caching on `subagent_query`** (A_T005) — mounts a ~4,345-token
@@ -71,5 +73,6 @@ The three-tier LLM adapter scaffolding from the template
 preserved unchanged. Whether to strip it or integrate it into the MCP
 surface is a Wk3 polish decision, not a v0.1.0 blocker.
 
-[Unreleased]: https://github.com/rkendev/claude-mcp-server-minimal/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/rkendev/claude-mcp-server-minimal/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/rkendev/claude-mcp-server-minimal/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/rkendev/claude-mcp-server-minimal/releases/tag/v0.1.0

@@ -49,6 +49,10 @@ normal input rate.
 **Token-cost reduction (call 2 input): 90%.**
 Reproducer: `MCP_API_KEY=... ANTHROPIC_API_KEY=... uv run python scripts/measure_cache.py`.
 
+Note: `ephemeral` defaults to a 5-minute TTL. Anthropic also offers a
+1-hour `ttl: "1h"` extended cache at higher cost; this artifact
+demonstrates the 5-minute default.
+
 Empirical note: Anthropic documents a 2,048-token cache minimum for
 Haiku, but `claude-haiku-4-5-20251001` (`anthropic==0.100.0`)
 silently disables caching below ~4,096 tokens — verified by probing

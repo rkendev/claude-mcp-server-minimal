@@ -35,6 +35,7 @@ from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, ValidationError
 
 from claude_mcp_server_minimal.server_errors import error_envelope, success_envelope
+from claude_mcp_server_minimal.system_prompts import SUBAGENT_SYSTEM_PROMPT
 
 SCHEMA_VERSION = "v1"
 SERVER_NAME = "claude-mcp-server-minimal"
@@ -181,9 +182,21 @@ async def subagent_query(question: str) -> dict[str, Any]:
         )
 
     client = Anthropic(api_key=api_key)
+    # Mount the system prompt as a single cache-controlled block. Haiku 4.5
+    # requires ~4,096 input tokens to cache (empirical, NOT the 2,048 figure
+    # documented for earlier Haiku generations); ``SUBAGENT_SYSTEM_PROMPT``
+    # is sized at ~4,345 tokens with safety margin. See
+    # ``system_prompts.py`` module docstring for the verification trail.
     response = client.messages.create(
         model=MODEL_DEFAULT,
         max_tokens=MAX_TOKENS,
+        system=[
+            {
+                "type": "text",
+                "text": SUBAGENT_SYSTEM_PROMPT,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
         messages=[{"role": "user", "content": question}],
     )
 

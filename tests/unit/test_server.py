@@ -273,3 +273,28 @@ def test_subagent_query_missing_anthropic_api_key_returns_permission_error(
     assert err["errorCategory"] == "permission"
     assert err["isRetryable"] is False
     assert "ANTHROPIC_API_KEY" in err["message"]
+
+
+@pytest.mark.vcr
+def test_subagent_query_caches_system_prompt(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """T005: two calls with the same system prompt; second hits cache.
+
+    Cassette records two back-to-back interactions: the first writes the
+    cache (``cache_creation_input_tokens > 0``), the second reads from it
+    (``cache_read_input_tokens > 0``). Haiku 4.5's empirical cache minimum
+    is ~4,096 tokens; ``SUBAGENT_SYSTEM_PROMPT`` is sized at ~4,345 with
+    margin. See ``system_prompts.py`` for the verification trail.
+    """
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "dummy")
+    monkeypatch.setenv("MCP_API_KEY", "test-key")
+
+    p1 = _call_tool("subagent_query", {"question": "What is 2+2?"})
+    p2 = _call_tool("subagent_query", {"question": "What is 3+3?"})
+
+    usage1 = p1["data"]["trajectory"][0]["usage"]
+    usage2 = p2["data"]["trajectory"][0]["usage"]
+    assert usage1.get("cache_creation_input_tokens", 0) > 0
+    assert usage1.get("cache_read_input_tokens", 0) == 0
+    assert usage2.get("cache_read_input_tokens", 0) > 0

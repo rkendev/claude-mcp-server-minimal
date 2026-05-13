@@ -33,6 +33,29 @@ Need offline Ollama backing for the inherited template scaffolding?
 `./scripts/smoke.sh` brings up a digest-pinned Ollama container and
 verifies it's healthy.
 
+## Prompt caching
+
+The `subagent_query` tool mounts a ~4,345-token system prompt with
+`cache_control: ephemeral`. The first call writes the cache; subsequent
+calls within the 5-minute TTL read from it, billed at 10% of the
+normal input rate.
+
+| Call      | input_tokens | cache_creation | cache_read | output_tokens | latency_ms |
+|-----------|-------------:|---------------:|-----------:|--------------:|-----------:|
+| 1 (cold)  |           13 |          4,338 |          0 |             6 |        930 |
+| 2 (warm)  |           13 |              0 |      4,338 |             6 |        756 |
+
+**Cache-hit ratio (call 2): 99.7%.** **Latency delta: 19% faster.**
+**Token-cost reduction (call 2 input): 90%.**
+Reproducer: `MCP_API_KEY=... ANTHROPIC_API_KEY=... uv run python scripts/measure_cache.py`.
+
+Empirical note: Anthropic documents a 2,048-token cache minimum for
+Haiku, but `claude-haiku-4-5-20251001` (`anthropic==0.100.0`)
+silently disables caching below ~4,096 tokens — verified by probing
+3,999-token (`cache_create=0`) vs 4,202-token (`cache_create=4,202`)
+prompts. The system prompt is sized at ~4,345 tokens with safety margin;
+see `src/claude_mcp_server_minimal/system_prompts.py`.
+
 ## MCP Server
 
 `.mcp.json` at the repo root declares this project as an MCP server an

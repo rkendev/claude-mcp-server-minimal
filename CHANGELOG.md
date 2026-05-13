@@ -13,6 +13,21 @@ release; each tagged version carries its release date and a stable anchor.
 
 ### Added
 
+- **Prompt caching on `subagent_query`** (A_T005) — mounts a ~4,345-token
+  `SUBAGENT_SYSTEM_PROMPT` on every call with `cache_control: ephemeral`.
+  First call writes the cache, subsequent calls within the 5-minute TTL
+  read from it. `usage` in the trajectory surfaces `cache_creation_input_tokens`
+  / `cache_read_input_tokens` (T004 already future-proofed the schema via
+  `getattr`). New `scripts/measure_cache.py` runs two back-to-back calls
+  and prints a markdown table of input/cache tokens, output tokens, and
+  latency for each. README first 200 words now include the measured cache-hit
+  ratio, latency delta, and token-cost reduction.
+- **Empirical Haiku 4.5 cache minimum: ~4,096 tokens.** The Anthropic docs
+  cite 2,048 tokens for Haiku; empirical probing against
+  `claude-haiku-4-5-20251001` (`anthropic==0.100.0`) shows a 3,999-token
+  prompt does NOT cache while a 4,202-token prompt does. The system prompt
+  is sized at ~4,345 tokens with safety margin. See
+  `src/claude_mcp_server_minimal/system_prompts.py` module docstring.
 - **`subagent_query` real dispatch** (A_T004) — wires `subagent_query` to a
   single Anthropic `messages.create` call against `claude-haiku-4-5` and
   captures the response as a one-turn trajectory (`role`, `stop_reason`,

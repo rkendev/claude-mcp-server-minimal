@@ -118,7 +118,8 @@ def test_describe_schema_returns_exact_v1_shape() -> None:
                 {
                     "name": "subagent_query",
                     "description": (
-                        "STUB (T003): return an empty trajectory; real dispatch lands in T004."
+                        "Dispatch ``question`` to a sub-agent and return "
+                        "its one-turn trajectory."
                     ),
                     "input_schema": {
                         "properties": {
@@ -218,10 +219,57 @@ def test_echo_toolcall_input_schema_has_anyOf() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_subagent_query_stub_returns_empty_trajectory() -> None:
-    """T003: stub returns the canonical envelope with an empty trajectory."""
-    payload = _call_tool("subagent_query", {"question": "ping"})
-    assert payload == {
-        "success": True,
-        "data": {"question": "ping", "trajectory": []},
+@pytest.fixture(scope="module")
+def vcr_config() -> dict[str, Any]:
+    """Redact auth headers from any VCR cassette this module records."""
+    return {
+        "filter_headers": [
+            ("authorization", "REDACTED"),
+            ("x-api-key", "REDACTED"),
+        ],
     }
+
+
+@pytest.mark.vcr
+def test_subagent_query_real_dispatch_returns_trajectory(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """T004: real second-Claude call returns a one-turn trajectory.
+
+    Cassette-backed: first run with a real ``ANTHROPIC_API_KEY`` records;
+    subsequent runs replay offline with the dummy key. The SDK validates
+    ``api_key`` at constructor time before VCR intercepts, so the test
+    sets a non-empty placeholder value rather than relying on the
+    cassette to short-circuit the auth check.
+    """
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "dummy")
+    monkeypatch.setenv("MCP_API_KEY", "test-key")
+    payload = _call_tool("subagent_query", {"question": "What is 2+2?"})
+
+    assert payload["success"] is True
+    data = payload["data"]
+    assert data["question"] == "What is 2+2?"
+    assert len(data["trajectory"]) == 1
+    turn = data["trajectory"][0]
+    assert turn["role"] == "assistant"
+    assert turn["stop_reason"] == "end_turn"
+    assert turn["model"].startswith("claude-haiku-4-5")
+    assert "input_tokens" in turn["usage"]
+    assert "output_tokens" in turn["usage"]
+    assert isinstance(turn["content"], list) and turn["content"]
+
+
+def test_subagent_query_missing_anthropic_api_key_returns_permission_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Missing ANTHROPIC_API_KEY surfaces as the canonical permission envelope."""
+    monkeypatch.setenv("MCP_API_KEY", "test-key")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    payload = _call_tool("subagent_query", {"question": "ping"})
+
+    assert payload["success"] is False
+    err = payload["error"]
+    assert err["errorCategory"] == "permission"
+    assert err["isRetryable"] is False
+    assert "ANTHROPIC_API_KEY" in err["message"]

@@ -30,6 +30,7 @@ import os
 from datetime import UTC, datetime
 from typing import Any
 
+from anthropic import Anthropic
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, ValidationError
 
@@ -37,6 +38,8 @@ from claude_mcp_server_minimal.server_errors import error_envelope, success_enve
 
 SCHEMA_VERSION = "v1"
 SERVER_NAME = "claude-mcp-server-minimal"
+MODEL_DEFAULT = "claude-haiku-4-5-20251001"
+MAX_TOKENS = 1024
 
 mcp = FastMCP(SERVER_NAME)
 
@@ -153,13 +156,60 @@ class SubagentQueryInput(BaseModel):
     model_config = {"extra": "forbid"}
 
 
-# Stub — Wk1 kickoff (T003). Dispatch logic lands in T004; this returns the
-# canonical success envelope with an empty trajectory so the tool surface
-# registers and is callable, but no second Claude call is made yet.
+# Single-turn sub-agent dispatch (T004). Multi-turn iteration and sub-agent
+# tool-use are out of scope; the trajectory captures one assistant turn so
+# T005 can layer cache_control on top without re-shaping.
 @mcp.tool()  # type: ignore[misc, unused-ignore]  # mcp SDK has no py.typed marker (1.27.0); revisit when SDK ships types
 async def subagent_query(question: str) -> dict[str, Any]:
-    """STUB (T003): return an empty trajectory; real dispatch lands in T004."""
-    return success_envelope({"question": question, "trajectory": []})
+    """Dispatch ``question`` to a sub-agent and return its one-turn trajectory."""
+    if not os.environ.get("MCP_API_KEY", ""):
+        return error_envelope(
+            category="permission",
+            is_retryable=False,
+            message="MCP_API_KEY is not set; subagent_query requires it at call time",
+        )
+
+    # The Anthropic SDK validates ``api_key`` at constructor time, before
+    # VCR can intercept the network call — so pass it through explicitly
+    # rather than relying on the SDK's env-var fallback.
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return error_envelope(
+            category="permission",
+            is_retryable=False,
+            message=("ANTHROPIC_API_KEY is not set; subagent_query requires it at call time"),
+        )
+
+    client = Anthropic(api_key=api_key)
+    response = client.messages.create(
+        model=MODEL_DEFAULT,
+        max_tokens=MAX_TOKENS,
+        messages=[{"role": "user", "content": question}],
+    )
+
+    # Cache-usage fields ship in T005; surface conditionally so the schema
+    # is stable across the two PRs.
+    usage: dict[str, Any] = {
+        "input_tokens": response.usage.input_tokens,
+        "output_tokens": response.usage.output_tokens,
+    }
+    cache_creation = getattr(response.usage, "cache_creation_input_tokens", None)
+    if cache_creation is not None:
+        usage["cache_creation_input_tokens"] = cache_creation
+    cache_read = getattr(response.usage, "cache_read_input_tokens", None)
+    if cache_read is not None:
+        usage["cache_read_input_tokens"] = cache_read
+
+    trajectory = [
+        {
+            "role": "assistant",
+            "stop_reason": response.stop_reason,
+            "content": [block.model_dump() for block in response.content],
+            "model": response.model,
+            "usage": usage,
+        }
+    ]
+    return success_envelope({"question": question, "trajectory": trajectory})
 
 
 def main() -> None:

@@ -13,6 +13,14 @@ release; each tagged version carries its release date and a stable anchor.
 
 ### Added
 
+- **`subagent_query` real dispatch** (A_T004) — wires `subagent_query` to a
+  single Anthropic `messages.create` call against `claude-haiku-4-5` and
+  captures the response as a one-turn trajectory (`role`, `stop_reason`,
+  `content`, `model`, `usage`). `usage` conditionally surfaces
+  `cache_creation_input_tokens` / `cache_read_input_tokens` via `getattr`
+  so T005 can populate them without re-shaping the schema. Cassette-backed
+  test (`tests/unit/cassettes/test_server/`) replays offline; auth headers
+  redacted via the module-scoped `vcr_config` fixture.
 - **`subagent_query` MCP tool stub** (A_T003) — registers the tool with a
   `{question: str}` input schema and returns `{"question": ..., "trajectory": []}`
   via the canonical success envelope. Dispatch logic lands in T004; this

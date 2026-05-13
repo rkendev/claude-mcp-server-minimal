@@ -10,6 +10,8 @@ exploring Claude's tool-use and MCP fundamentals.
 > Repo bootstrapped from my own `roy-ai-template@v0.5.0` starter;
 > MCP server logic is original.
 
+For a 15-minute deep-dive on the architecture, tools, caching findings, and forward work, see [WALKTHROUGH.md](WALKTHROUGH.md).
+
 ## Quick start
 
 ```bash

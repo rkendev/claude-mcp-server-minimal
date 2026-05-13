@@ -11,6 +11,10 @@ release; each tagged version carries its release date and a stable anchor.
 
 ## [Unreleased]
 
+### Added
+
+- **`WALKTHROUGH.md`** (A_T007): a 15-minute deep-dive doc covering architecture (ports-and-adapters scaffold plus the three original MCP-server files), the three tools and their pinned design constraints, the empirical 4,096-token Haiku 4.5 caching finding with measurement table, the testing posture (VCR cassette pattern plus the `_call_tool` helper plus the recording-footgun recipe), and forward work for v0.3.0. Linked from `README.md`.
+
 ## [0.2.0] — 2026-05-13
 
 ### Added

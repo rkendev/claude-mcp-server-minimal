@@ -11,6 +11,13 @@ release; each tagged version carries its release date and a stable anchor.
 
 ## [Unreleased]
 
+### Added
+
+- **`subagent_query` MCP tool stub** (A_T003) — registers the tool with a
+  `{question: str}` input schema and returns `{"question": ..., "trajectory": []}`
+  via the canonical success envelope. Dispatch logic lands in T004; this
+  commit proves the tool surface and CI gate.
+
 ## [0.1.0] — 2026-05-08
 
 First release of Artifact A (Minimal MCP Server) for a small-projects
